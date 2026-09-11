@@ -44,6 +44,13 @@ app.use(express.json({ limit: '10kb' }));
 app.use(hpp());
 
 // Routes
+app.get('/', (req, res) => {
+  res.status(200).json({
+    success: true,
+    message: 'Welcome to Nikdel API'
+  });
+});
+
 app.use('/api/v1/health', healthRoutes);
 app.use('/api/v1/auth', authRoutes);
 app.use('/api/v1/users', userRoutes);
