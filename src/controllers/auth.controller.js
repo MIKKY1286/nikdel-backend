@@ -3,7 +3,14 @@ import { asyncHandler } from '../utils/asyncHandler.js';
 import { ApiError } from '../utils/ApiError.js';
 import { generateToken } from '../utils/generateToken.js';
 import { sendWelcomeEmail } from '../services/email.service.js';
+import crypto from 'crypto';
+import admin from 'firebase-admin';
 
+// NOTE: You must initialize the Firebase Admin SDK somewhere in your application startup (e.g., server.js or a dedicated config file).
+// Example initialization:
+// admin.initializeApp({
+//   credential: admin.credential.cert(serviceAccountJson)
+// });
 // @desc    Register a new user
 // @route   POST /api/v1/auth/register
 // @access  Public
@@ -91,6 +98,70 @@ export const login = asyncHandler(async (req, res, next) => {
       email: user.email,
       role: user.role,
       token,
+    },
+  });
+});
+
+// @desc    Login/Register user with Google
+// @route   POST /api/v1/auth/google
+// @access  Public
+export const googleSignIn = asyncHandler(async (req, res, next) => {
+  const { token } = req.body;
+
+  if (!token) {
+    return next(new ApiError(400, 'Please provide a Firebase ID token', 'MISSING_TOKEN'));
+  }
+
+  let decodedToken;
+  try {
+    decodedToken = await admin.auth().verifyIdToken(token);
+  } catch (error) {
+    return next(new ApiError(401, 'Invalid Firebase ID token', 'INVALID_TOKEN'));
+  }
+
+  const { email, name, picture } = decodedToken;
+
+  // Check if user already exists
+  let user = await User.findOne({ email });
+
+  if (!user) {
+    // Generate a secure random password since it is required by the User schema
+    const secureRandomPassword = crypto.randomBytes(20).toString('hex');
+    
+    user = await User.create({
+      name: name || 'Google User',
+      email,
+      password: secureRandomPassword,
+      avatar: picture || 'no-photo.jpg',
+      isVerified: true, // OAuth emails are generally already verified
+    });
+    
+    // Optional: Send welcome email for newly registered Google users
+    sendWelcomeEmail(user.email, user.name);
+  } else {
+    // If the user already exists, you can optionally update their avatar or name if they have changed
+    if (picture && user.avatar === 'no-photo.jpg') {
+      user.avatar = picture;
+    }
+  }
+
+  // Update last login
+  user.lastLogin = Date.now();
+  await user.save({ validateBeforeSave: false });
+
+  // Generate our API Token
+  const jwtToken = generateToken(user._id);
+
+  res.status(200).json({
+    success: true,
+    message: 'User authenticated via Google successfully',
+    data: {
+      _id: user._id,
+      name: user.name,
+      email: user.email,
+      role: user.role,
+      avatar: user.avatar,
+      token: jwtToken,
     },
   });
 });
