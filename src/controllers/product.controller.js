@@ -33,8 +33,21 @@ export const getProducts = asyncHandler(async (req, res, next) => {
 
   // If public route, default to only showing published active products
   // Note: Admins can override this by explicitly querying status if they use the admin routes later.
-  filterObj.isActive = true;
-  filterObj.status = 'published';
+  if (reqQuery.status === 'all') {
+    delete filterObj.status;
+  } else if (reqQuery.status) {
+    filterObj.status = reqQuery.status;
+  } else {
+    filterObj.status = 'published';
+  }
+
+  if (reqQuery.isActive === 'all') {
+    delete filterObj.isActive;
+  } else if (reqQuery.isActive !== undefined) {
+    filterObj.isActive = reqQuery.isActive === 'true';
+  } else {
+    filterObj.isActive = true;
+  }
 
   // Handling Text Search
   if (req.query.search) {

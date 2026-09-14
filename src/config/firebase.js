@@ -1,4 +1,4 @@
-import admin from 'firebase-admin';
+import { initializeApp, cert } from 'firebase-admin/app';
 import { readFileSync } from 'fs';
 import { dirname, join } from 'path';
 import { fileURLToPath } from 'url';
@@ -11,9 +11,18 @@ const serviceAccountPath = join(__dirname, '../../snaporia-207ae-firebase-admins
 
 export const initFirebase = () => {
   try {
-    const serviceAccount = JSON.parse(readFileSync(serviceAccountPath, 'utf8'));
-    admin.initializeApp({
-      credential: admin.credential.cert(serviceAccount)
+    let serviceAccount;
+    
+    // First, try to load from an environment variable (useful for Render deployment)
+    if (process.env.FIREBASE_SERVICE_ACCOUNT) {
+      serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT);
+    } else {
+      // Fallback: try to read the local file
+      serviceAccount = JSON.parse(readFileSync(serviceAccountPath, 'utf8'));
+    }
+
+    initializeApp({
+      credential: cert(serviceAccount)
     });
     console.log('Firebase Admin SDK initialized successfully');
   } catch (error) {

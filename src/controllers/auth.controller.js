@@ -4,7 +4,7 @@ import { ApiError } from '../utils/ApiError.js';
 import { generateToken } from '../utils/generateToken.js';
 import { sendWelcomeEmail } from '../services/email.service.js';
 import crypto from 'crypto';
-import admin from 'firebase-admin';
+import { getAuth } from 'firebase-admin/auth';
 
 // NOTE: You must initialize the Firebase Admin SDK somewhere in your application startup (e.g., server.js or a dedicated config file).
 // Example initialization:
@@ -114,9 +114,10 @@ export const googleSignIn = asyncHandler(async (req, res, next) => {
 
   let decodedToken;
   try {
-    decodedToken = await admin.auth().verifyIdToken(token);
+    decodedToken = await getAuth().verifyIdToken(token);
   } catch (error) {
-    return next(new ApiError(401, 'Invalid Firebase ID token', 'INVALID_TOKEN'));
+    console.error('Firebase token verification error:', error);
+    return next(new ApiError(401, `Invalid Firebase ID token: ${error.message}`, 'INVALID_TOKEN'));
   }
 
   const { email, name, picture } = decodedToken;

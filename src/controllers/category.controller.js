@@ -1,4 +1,5 @@
 import { Category } from '../models/Category.js';
+import { Product } from '../models/Product.js';
 import { asyncHandler } from '../utils/asyncHandler.js';
 import { ApiError } from '../utils/ApiError.js';
 import slugify from 'slugify';
@@ -7,12 +8,19 @@ import slugify from 'slugify';
 // @route   GET /api/v1/categories
 // @access  Public
 export const getCategories = asyncHandler(async (req, res, next) => {
-  const categories = await Category.find({ isActive: true });
+  const categories = await Category.find({ isActive: true }).lean();
+
+  const categoriesWithCount = await Promise.all(
+    categories.map(async (cat) => {
+      const productCount = await Product.countDocuments({ category: cat._id });
+      return { ...cat, productCount };
+    })
+  );
 
   res.status(200).json({
     success: true,
     message: 'Categories retrieved successfully',
-    data: categories,
+    data: categoriesWithCount,
   });
 });
 
