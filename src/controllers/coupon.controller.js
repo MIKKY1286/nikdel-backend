@@ -42,3 +42,40 @@ export const deleteCoupon = asyncHandler(async (req, res, next) => {
   await coupon.deleteOne();
   res.status(200).json({ success: true, data: {} });
 });
+
+// @desc    Validate a coupon code
+// @route   POST /api/v1/coupons/validate
+// @access  Private
+export const validateCoupon = asyncHandler(async (req, res, next) => {
+  const { code } = req.body;
+  if (!code) {
+    return next(new ApiError(400, 'Please provide a coupon code'));
+  }
+
+  const coupon = await Coupon.findOne({ code: code.toUpperCase() });
+
+  if (!coupon) {
+    return next(new ApiError(404, 'Invalid coupon code'));
+  }
+
+  if (coupon.status !== 'active') {
+    return next(new ApiError(400, 'This coupon is no longer active'));
+  }
+
+  if (new Date(coupon.expiryDate) < new Date()) {
+    return next(new ApiError(400, 'This coupon has expired'));
+  }
+
+  if (coupon.uses >= coupon.usageCount) {
+    return next(new ApiError(400, 'This coupon usage limit has been reached'));
+  }
+
+  res.status(200).json({
+    success: true,
+    data: {
+      code: coupon.code,
+      value: coupon.value,
+      type: coupon.type
+    }
+  });
+});

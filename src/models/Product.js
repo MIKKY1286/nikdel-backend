@@ -35,6 +35,7 @@ const productSchema = new mongoose.Schema(
         validator: function (val) {
           // 'this' refers to the current document only when creating a new document or using save().
           // Using it with update requires special handling if needed, but for simplicity we rely on pre('save') logic or just creating.
+          if (!this || this.price === undefined) return true;
           return val === undefined || val === null || val <= this.price;
         },
         message: 'Discount price ({VALUE}) must be less than or equal to regular price',

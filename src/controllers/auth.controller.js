@@ -166,3 +166,89 @@ export const googleSignIn = asyncHandler(async (req, res, next) => {
     },
   });
 });
+
+// @desc    Forgot password
+// @route   POST /api/v1/auth/forgotpassword
+// @access  Public
+export const forgotPassword = asyncHandler(async (req, res, next) => {
+  const user = await User.findOne({ email: req.body.email });
+
+  if (!user) {
+    return next(new ApiError(404, 'There is no user with that email', 'USER_NOT_FOUND'));
+  }
+
+  // Get reset token
+  const resetToken = user.getResetPasswordToken();
+
+  await user.save({ validateBeforeSave: false });
+
+  // Create reset url
+  // Assuming frontend is running on localhost:5173 or similar, or getting it from req origin
+  const origin = req.get('origin') || 'http://localhost:5173';
+  const resetUrl = `${origin}/reset-password?token=${resetToken}`;
+
+  const { sendPasswordResetEmail } = await import('../services/email.service.js');
+  
+  // Log the URL so you can easily copy-paste it during testing when email fails
+  console.log(`\n======================================================\nPASSWORD RESET URL (Click or Copy):\n${resetUrl}\n======================================================\n`);
+
+  try {
+    await sendPasswordResetEmail(user.email, user.name, resetUrl);
+    
+    res.status(200).json({
+      success: true,
+      data: 'Email sent',
+      // Useful for testing if email service isn't fully configured
+      resetToken: resetToken 
+    });
+  } catch (err) {
+    console.error(err);
+    user.resetPasswordToken = undefined;
+    user.resetPasswordExpire = undefined;
+
+    await user.save({ validateBeforeSave: false });
+
+    return next(new ApiError(500, 'Email could not be sent', 'EMAIL_ERROR'));
+  }
+});
+
+// @desc    Reset password
+// @route   PUT /api/v1/auth/resetpassword/:resettoken
+// @access  Public
+export const resetPassword = asyncHandler(async (req, res, next) => {
+  // Get hashed token
+  const resetPasswordToken = crypto
+    .createHash('sha256')
+    .update(req.params.resettoken)
+    .digest('hex');
+
+  const user = await User.findOne({
+    resetPasswordToken,
+    resetPasswordExpire: { $gt: Date.now() },
+  });
+
+  if (!user) {
+    return next(new ApiError(400, 'Invalid token', 'INVALID_TOKEN'));
+  }
+
+  // Set new password
+  user.password = req.body.password;
+  user.resetPasswordToken = undefined;
+  user.resetPasswordExpire = undefined;
+  await user.save();
+
+  const token = generateToken(user._id);
+
+  res.status(200).json({
+    success: true,
+    message: 'Password reset successfully',
+    data: {
+      _id: user._id,
+      name: user.name,
+      email: user.email,
+      role: user.role,
+      token,
+    },
+  });
+});
+

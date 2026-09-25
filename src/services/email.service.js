@@ -70,3 +70,28 @@ export const sendOrderReceipt = async (email, name, orderNumber, total) => {
     logger.error(`Error sending receipt email to ${email}: ${error.message}`);
   }
 };
+
+export const sendPasswordResetEmail = async (email, name, resetUrl) => {
+  if (!transporter) return;
+
+  const html = `
+    <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+      <h1 style="color: #2196F3;">Password Reset Request</h1>
+      <p style="font-size: 16px;">Hi ${name},</p>
+      <p style="font-size: 16px;">You are receiving this email because you (or someone else) has requested the reset of a password. Please make a PUT request to: \n\n <a href="${resetUrl}">${resetUrl}</a></p>
+      <p style="font-size: 14px; color: #777;">If you did not request this, please ignore this email and your password will remain unchanged.</p>
+    </div>
+  `;
+
+  try {
+    await transporter.sendMail({
+      from: config.fromEmail,
+      to: email,
+      subject: 'Password Reset Request',
+      html,
+    });
+    logger.info(`Password reset email sent to ${email}`);
+  } catch (error) {
+    logger.error(`Error sending password reset email to ${email}: ${error.message}`);
+  }
+};

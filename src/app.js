@@ -19,6 +19,8 @@ import paymentRoutes from './routes/payment.routes.js';
 import reviewRoutes from './routes/review.routes.js';
 import adminRoutes from './routes/admin.routes.js';
 import couponRoutes from './routes/coupon.routes.js';
+import userCouponRoutes from './routes/userCoupon.routes.js';
+import settingsRoutes from './routes/settings.routes.js';
 
 const app = express();
 
@@ -64,6 +66,8 @@ app.use('/api/v1/payments', paymentRoutes);
 app.use('/api/v1/reviews', reviewRoutes);
 app.use('/api/v1/admin', adminRoutes);
 app.use('/api/v1/admin/coupons', couponRoutes);
+app.use('/api/v1/coupons', userCouponRoutes);
+app.use('/api/v1', settingsRoutes);
 
 // Unknown route handler (404)
 app.use(notFoundHandler);
