@@ -4,6 +4,7 @@ import {
   getAllUsers,
   updateUserRole,
   getAllOrders,
+  updateOrderStatus,
   getAdvancedReports,
 } from '../controllers/admin.controller.js';
 import { protect, authorize } from '../middleware/auth.middleware.js';
@@ -26,5 +27,6 @@ router.patch('/users/:id/role', updateUserRole);
 
 // Order Management
 router.get('/orders', getAllOrders);
+router.patch('/orders/:id/status', updateOrderStatus);
 
 export default router;

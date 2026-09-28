@@ -101,6 +101,36 @@ export const getAllOrders = asyncHandler(async (req, res, next) => {
   });
 });
 
+// @desc    Update order status
+// @route   PATCH /api/v1/admin/orders/:id/status
+// @access  Private/Admin
+export const updateOrderStatus = asyncHandler(async (req, res, next) => {
+  const { status } = req.body;
+
+  if (!['pending', 'processing', 'shipped', 'delivered', 'cancelled'].includes(status?.toLowerCase())) {
+    return next(new ApiError(400, 'Invalid order status', 'INVALID_STATUS'));
+  }
+
+  // Support both _id and orderNumber lookups depending on what frontend sends
+  const query = req.params.id.startsWith('ORD-') ? { orderNumber: req.params.id } : { _id: req.params.id };
+  
+  const order = await Order.findOneAndUpdate(
+    query,
+    { orderStatus: status.toLowerCase() },
+    { new: true, runValidators: true }
+  );
+
+  if (!order) {
+    return next(new ApiError(404, 'Order not found', 'ORDER_NOT_FOUND'));
+  }
+
+  res.status(200).json({
+    success: true,
+    message: `Order status updated to ${status}`,
+    data: order,
+  });
+});
+
 // @desc    Get advanced reports (historical)
 // @route   GET /api/v1/admin/reports
 // @access  Private/Admin

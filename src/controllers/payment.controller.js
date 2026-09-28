@@ -13,6 +13,7 @@ import { logger } from '../utils/logger.js';
 // @access  Private
 export const initializeTransaction = asyncHandler(async (req, res, next) => {
   const { orderId } = req.params;
+  const { amountInKobo } = req.body;
 
   const order = await Order.findById(orderId).populate('user', 'email');
 
@@ -28,9 +29,12 @@ export const initializeTransaction = asyncHandler(async (req, res, next) => {
     return next(new ApiError(400, 'Order is already paid', 'ORDER_ALREADY_PAID'));
   }
 
+  // Calculate amount (fallback to 1600 rate if not provided)
+  const finalAmountInKobo = amountInKobo || Math.round(order.total * 1600 * 100);
+
   // Initialize payment via Paystack
   const paystackResponse = await initializePayment(
-    order.total,
+    finalAmountInKobo,
     order.user.email,
     order.orderNumber // Use our generated order number as the Paystack reference
   );

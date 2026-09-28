@@ -127,7 +127,7 @@ export const updateAddress = asyncHandler(async (req, res, next) => {
   }
 
   // Update fields
-  const allowedFields = ['street', 'city', 'state', 'country', 'zipCode', 'isDefault'];
+  const allowedFields = ['fullName', 'street', 'city', 'state', 'country', 'zipCode', 'phone', 'isDefault'];
   allowedFields.forEach((field) => {
     if (req.body[field] !== undefined) {
       address[field] = req.body[field];

@@ -18,9 +18,22 @@ export const createOrder = asyncHandler(async (req, res, next) => {
   }
 
   // 2. Get user's shipping address
-  // For this implementation, we will expect the frontend to pass the full address object or we look it up
-  // Let's assume the user model has addresses and we find it by ID
-  const address = req.user.addresses.id(shippingAddressId);
+  let address;
+  if (shippingAddressId && req.user.addresses) {
+    address = req.user.addresses.id(shippingAddressId);
+  }
+  
+  if (!address && req.body.shippingDetails) {
+    address = {
+      street: req.body.shippingDetails.address,
+      city: req.body.shippingDetails.city,
+      state: req.body.shippingDetails.state || 'N/A',
+      country: req.body.shippingDetails.country,
+      zipCode: req.body.shippingDetails.zipCode || 'N/A',
+      phone: req.body.shippingDetails.phone,
+    };
+  }
+
   if (!address) {
     return next(new ApiError(404, 'Shipping address not found', 'ADDRESS_NOT_FOUND'));
   }

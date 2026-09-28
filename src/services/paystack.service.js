@@ -12,11 +12,8 @@ const paystackClient = axios.create({
   },
 });
 
-export const initializePayment = async (amountInNaira, email, reference) => {
+export const initializePayment = async (amountInKobo, email, reference) => {
   try {
-    // Paystack expects amounts in kobo (base unit)
-    const amountInKobo = amountInNaira * 100;
-    
     const response = await paystackClient.post('/transaction/initialize', {
       amount: amountInKobo,
       email,
