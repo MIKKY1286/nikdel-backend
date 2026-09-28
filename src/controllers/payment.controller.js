@@ -113,3 +113,52 @@ export const paystackWebhook = asyncHandler(async (req, res, next) => {
   // Always return 200 OK to acknowledge receipt to Paystack
   res.status(200).send('Webhook received');
 });
+
+// @desc    Synchronous Payment Verification (Fallback for localhost/frontend)
+// @route   GET /api/v1/payments/verify/:reference
+// @access  Private
+export const verifyTransaction = asyncHandler(async (req, res, next) => {
+  const { reference } = req.params;
+
+  // 1. Verify with Paystack API directly
+  const { verifyPayment } = await import('../services/paystack.service.js');
+  const paystackVerification = await verifyPayment(reference);
+
+  if (!paystackVerification || paystackVerification.data.status !== 'success') {
+    return next(new ApiError(400, 'Payment verification failed or pending', 'PAYMENT_FAILED'));
+  }
+
+  // 2. Find Order and Fulfill if not already paid
+  const order = await Order.findOne({ orderNumber: reference }).populate('user', 'firstName email');
+
+  if (!order) {
+    return next(new ApiError(404, 'Order not found', 'ORDER_NOT_FOUND'));
+  }
+
+  if (order.paymentStatus !== 'paid') {
+    order.paymentStatus = 'paid';
+    order.paidAt = Date.now();
+    order.orderStatus = 'processing';
+    await order.save();
+
+    for (const item of order.items) {
+      await Product.findByIdAndUpdate(
+        item.product,
+        { $inc: { stock: -item.quantity } },
+        { new: true, runValidators: true }
+      );
+    }
+
+    logger.info(`Order ${order.orderNumber} paid and inventory reduced (Verified synchronously).`);
+    
+    if (order.user && order.user.email) {
+      sendOrderReceipt(order.user.email, order.user.firstName, order.orderNumber, order.total);
+    }
+  }
+
+  res.status(200).json({
+    success: true,
+    message: 'Payment verified successfully',
+    data: order,
+  });
+});

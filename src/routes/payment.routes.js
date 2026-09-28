@@ -2,6 +2,7 @@ import express from 'express';
 import {
   initializeTransaction,
   paystackWebhook,
+  verifyTransaction,
 } from '../controllers/payment.controller.js';
 import { protect } from '../middleware/auth.middleware.js';
 
@@ -14,5 +15,6 @@ router.post('/webhook', paystackWebhook);
 // Protected routes
 router.use(protect);
 router.post('/initialize/:orderId', initializeTransaction);
+router.get('/verify/:reference', verifyTransaction);
 
 export default router;

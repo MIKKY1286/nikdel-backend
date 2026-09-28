@@ -21,6 +21,7 @@ import adminRoutes from './routes/admin.routes.js';
 import couponRoutes from './routes/coupon.routes.js';
 import userCouponRoutes from './routes/userCoupon.routes.js';
 import settingsRoutes from './routes/settings.routes.js';
+import blogRoutes from './routes/blog.routes.js';
 
 const app = express();
 
@@ -67,6 +68,7 @@ app.use('/api/v1/reviews', reviewRoutes);
 app.use('/api/v1/admin', adminRoutes);
 app.use('/api/v1/admin/coupons', couponRoutes);
 app.use('/api/v1/coupons', userCouponRoutes);
+app.use('/api/v1/blogs', blogRoutes);
 app.use('/api/v1', settingsRoutes);
 
 // Unknown route handler (404)

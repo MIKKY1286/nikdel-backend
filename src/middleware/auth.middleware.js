@@ -58,3 +58,32 @@ export const authorize = (...roles) => {
     next();
   };
 };
+
+// Optionally protect routes - sets req.user if token is valid, but allows anonymous access
+export const optionallyProtect = asyncHandler(async (req, res, next) => {
+  let token;
+
+  if (
+    req.headers.authorization &&
+    req.headers.authorization.startsWith('Bearer')
+  ) {
+    token = req.headers.authorization.split(' ')[1];
+  }
+
+  if (!token) {
+    return next();
+  }
+
+  try {
+    const decoded = jwt.verify(token, config.jwtSecret);
+    const user = await User.findById(decoded.id).select('-password');
+    
+    if (user && user.isActive) {
+      req.user = user;
+    }
+  } catch (err) {
+    // Ignore invalid tokens for optional routes
+  }
+
+  next();
+});
