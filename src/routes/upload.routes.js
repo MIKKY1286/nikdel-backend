@@ -1,11 +1,14 @@
 import express from 'express';
-import { uploadImages, deleteImage } from '../controllers/upload.controller.js';
+import { uploadImages, deleteImage, uploadAvatar } from '../controllers/upload.controller.js';
 import { uploadMiddleware } from '../middleware/upload.middleware.js';
 import { protect, authorize } from '../middleware/auth.middleware.js';
 
 const router = express.Router();
 
-// All upload routes are protected and admin only
+// Protected route for all users (e.g., uploading an avatar)
+router.post('/avatar', protect, uploadMiddleware.single('avatar'), uploadAvatar);
+
+// Admin only routes below
 router.use(protect);
 router.use(authorize('admin'));
 

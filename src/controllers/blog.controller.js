@@ -1,4 +1,6 @@
 import { Post } from '../models/Post.js';
+import { Newsletter } from '../models/Newsletter.js';
+import { sendEmail } from '../utils/sendEmail.js';
 import { asyncHandler } from '../utils/asyncHandler.js';
 import { ApiError } from '../utils/ApiError.js';
 import slugify from 'slugify';
@@ -75,6 +77,19 @@ export const createPost = asyncHandler(async (req, res, next) => {
 
   const post = await Post.create(req.body);
 
+  if (post.status === 'published' || !req.body.status) {
+    const subscribers = await Newsletter.find({ isActive: true });
+    
+    // Send email to all subscribers asynchronously
+    subscribers.forEach(sub => {
+      sendEmail({
+        email: sub.email,
+        subject: `New Blog Post: ${post.title}`,
+        message: `Hi there!\n\nA new post titled "${post.title}" has been published on Nikdel.\n\nRead it here: ${process.env.CLIENT_URL || 'http://localhost:5173'}/blog/${post.slug}\n\nCheers,\nNikdel Team`,
+      }).catch(err => console.error(err));
+    });
+  }
+
   res.status(201).json({
     success: true,
     data: post,
@@ -89,6 +104,11 @@ export const updatePost = asyncHandler(async (req, res, next) => {
 
   if (!post) {
     return next(new ApiError(404, 'Post not found', 'NOT_FOUND'));
+  }
+
+  // Check ownership
+  if (post.author.toString() !== req.user.id && req.user.role !== 'admin') {
+    return next(new ApiError(403, 'Not authorized to update this post', 'FORBIDDEN'));
   }
 
   if (req.body.title && !req.body.slug) {
@@ -114,6 +134,11 @@ export const deletePost = asyncHandler(async (req, res, next) => {
 
   if (!post) {
     return next(new ApiError(404, 'Post not found', 'NOT_FOUND'));
+  }
+
+  // Check ownership
+  if (post.author.toString() !== req.user.id && req.user.role !== 'admin') {
+    return next(new ApiError(403, 'Not authorized to delete this post', 'FORBIDDEN'));
   }
 
   await post.deleteOne();

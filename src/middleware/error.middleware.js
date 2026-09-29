@@ -3,7 +3,8 @@ import { logger } from '../utils/logger.js';
 import { ApiError } from '../utils/ApiError.js';
 import mongoose from 'mongoose';
 
-export const errorHandler = (err, req, res, next) => { console.error('ORIGINAL ERROR:', err);
+export const errorHandler = (err, req, res, next) => {
+
   let error = err;
 
   // If it's not our custom ApiError, convert it

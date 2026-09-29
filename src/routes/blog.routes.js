@@ -20,9 +20,8 @@ router.get('/admin/all', protect, authorize('admin'), getAdminPosts);
 // Note: getPost is optionally protected so we can check if user is admin to show drafts
 router.get('/:idOrSlug', optionallyProtect, getPost);
 
-// Protected Admin routes
+// Protected routes (Create, Update, Delete)
 router.use(protect);
-router.use(authorize('admin'));
 
 router.post('/', createPost);
 router.patch('/:id', updatePost);

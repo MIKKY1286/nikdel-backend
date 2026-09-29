@@ -51,6 +51,30 @@ export const uploadImages = asyncHandler(async (req, res, next) => {
   }
 });
 
+// @desc    Upload single avatar image
+// @route   POST /api/v1/uploads/avatar
+// @access  Private
+export const uploadAvatar = asyncHandler(async (req, res, next) => {
+  if (!req.file) {
+    return next(new ApiError(400, 'Please upload an image file', 'NO_FILE_UPLOADED'));
+  }
+
+  try {
+    const result = await streamUpload(req.file.buffer, 'avatars');
+
+    res.status(200).json({
+      success: true,
+      message: 'Avatar uploaded successfully',
+      data: {
+        url: result.secure_url,
+        publicId: result.public_id,
+      },
+    });
+  } catch (error) {
+    return next(new ApiError(500, 'Error uploading avatar to Cloudinary', 'CLOUDINARY_UPLOAD_ERROR'));
+  }
+});
+
 // @desc    Delete an image from Cloudinary
 // @route   DELETE /api/v1/uploads/images
 // @access  Private/Admin
