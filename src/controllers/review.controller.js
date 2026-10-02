@@ -21,7 +21,7 @@ export const getReviews = asyncHandler(async (req, res, next) => {
 
   const reviews = await query.populate({
     path: 'user',
-    select: 'firstName lastName avatar',
+    select: 'name avatar firstName lastName',
   });
 
   res.status(200).json({
@@ -42,7 +42,7 @@ export const getReview = asyncHandler(async (req, res, next) => {
     })
     .populate({
       path: 'user',
-      select: 'firstName lastName avatar',
+      select: 'name avatar firstName lastName',
     });
 
   if (!review) {
