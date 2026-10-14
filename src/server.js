@@ -14,7 +14,7 @@ const startServer = async () => {
   initFirebase();
 
   server = app.listen(config.port, () => {
-    logger.info(`Server running in ${config.env} mode on port ${config.port}`);
+    logger.info(`Nikdel API Server running in ${config.env} mode on port ${config.port}`);
   });
 };
 
