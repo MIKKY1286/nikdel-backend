@@ -17,11 +17,27 @@ const settingSchema = new mongoose.Schema(
     currency: {
       type: String,
       enum: ['USD', 'EUR', 'GBP', 'NGN'],
-      default: 'USD',
+      default: 'NGN',
     },
     timezone: {
       type: String,
-      default: '(GMT+00:00) London',
+      default: '(GMT+01:00) West Africa Time (Lagos/Ibadan)',
+    },
+    storeAddress: {
+      type: String,
+      default: 'Wema Complex, Ibadan, Oyo State, Nigeria',
+    },
+    storePhone: {
+      type: String,
+      default: '+234 907 579 3786',
+    },
+    whatsappNumber: {
+      type: String,
+      default: '2349075793786',
+    },
+    operatingHours: {
+      type: String,
+      default: 'Mon - Sat: 8:00 AM - 6:00 PM (WAT)',
     }
   },
   {
