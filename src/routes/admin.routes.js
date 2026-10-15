@@ -2,6 +2,8 @@ import express from 'express';
 import {
   getDashboardStats,
   getAllUsers,
+  updateUser,
+  deleteUser,
   updateUserRole,
   getAllOrders,
   updateOrderStatus,
@@ -23,7 +25,10 @@ router.get('/reports', getAdvancedReports);
 
 // User Management
 router.get('/users', getAllUsers);
+router.put('/users/:id', updateUser);
+router.patch('/users/:id', updateUser);
 router.patch('/users/:id/role', updateUserRole);
+router.delete('/users/:id', deleteUser);
 
 // Order Management
 router.get('/orders', getAllOrders);

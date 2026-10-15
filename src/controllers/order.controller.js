@@ -67,14 +67,24 @@ export const createOrder = asyncHandler(async (req, res, next) => {
     calculatedSubtotal += price * item.quantity;
   }
 
-  // 4. Calculate total
-  const total = calculatedSubtotal + shippingFee;
+  // 4. Calculate shipping fee and total
+  // Check if this is the user's first order
+  const existingOrdersCount = await Order.countDocuments({ user: req.user.id });
+  const isFirstOrder = existingOrdersCount === 0;
+
+  // Free shipping ONLY on the first order; returning users are charged shipping
+  const finalShippingFee = isFirstOrder 
+    ? 0 
+    : (Number(shippingFee) > 0 ? Number(shippingFee) : (10 + cart.items.length * 2));
+
+  const total = calculatedSubtotal + finalShippingFee;
 
   // 5. Create Order
   const order = await Order.create({
     user: req.user.id,
     items: orderItems,
     shippingAddress: {
+      fullName: req.body.shippingDetails?.fullName || address.fullName || req.user.name || 'Customer',
       street: address.street,
       city: address.city,
       state: address.state,
@@ -83,7 +93,7 @@ export const createOrder = asyncHandler(async (req, res, next) => {
       phone: req.user.phone || address.phone || '0000000000',
     },
     subtotal: calculatedSubtotal,
-    shippingFee,
+    shippingFee: finalShippingFee,
     total,
   });
 
@@ -116,7 +126,7 @@ export const getMyOrders = asyncHandler(async (req, res, next) => {
 // @route   GET /api/v1/orders/:id
 // @access  Private
 export const getOrderById = asyncHandler(async (req, res, next) => {
-  const order = await Order.findById(req.params.id).populate('user', 'firstName lastName email');
+  const order = await Order.findById(req.params.id).populate('user', 'name firstName lastName email phone');
 
   if (!order) {
     return next(new ApiError(404, 'Order not found', 'ORDER_NOT_FOUND'));

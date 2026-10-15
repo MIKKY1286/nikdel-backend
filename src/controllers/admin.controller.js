@@ -8,22 +8,31 @@ import { ApiError } from '../utils/ApiError.js';
 // @route   GET /api/v1/admin/stats
 // @access  Private/Admin
 export const getDashboardStats = asyncHandler(async (req, res, next) => {
-  // 1. Calculate Total Revenue (Sum of all paid orders)
+  // 1. Calculate Total Revenue (Sum of all non-cancelled orders)
   const revenueAggregation = await Order.aggregate([
-    { $match: { paymentStatus: 'paid' } },
-    { $group: { _id: null, totalRevenue: { $sum: '$total' } } }
+    { $match: { orderStatus: { $ne: 'cancelled' } } },
+    { $group: { _id: null, totalRevenue: { $sum: '$total' }, count: { $sum: 1 } } }
   ]);
   const totalRevenue = revenueAggregation.length > 0 ? revenueAggregation[0].totalRevenue : 0;
+  const nonCancelledCount = revenueAggregation.length > 0 ? revenueAggregation[0].count : 0;
 
   // 2. Count totals concurrently for performance
-  const [totalOrders, totalUsers, totalProducts] = await Promise.all([
+  const [totalOrders, totalUsers, totalProducts, activeOrderUsers] = await Promise.all([
     Order.countDocuments(),
-    User.countDocuments(),
-    Product.countDocuments()
+    User.countDocuments({ role: 'customer' }),
+    Product.countDocuments(),
+    Order.distinct('user', { orderStatus: { $ne: 'cancelled' } })
   ]);
 
+  // Average Order Value
+  const avgOrderValue = (nonCancelledCount || totalOrders) > 0 
+    ? Math.round((totalRevenue / (nonCancelledCount || totalOrders)) * 100) / 100 
+    : 0;
+
+  // Active Customers: customers who placed non-cancelled orders or registered customers
+  const totalCustomers = Math.max(activeOrderUsers.length, totalUsers);
+
   // 3. Find Low Stock Products (where stock is less than or equal to lowStockThreshold)
-  // We use the $expr operator to compare two fields within the same document
   const lowStockProducts = await Product.find({
     $expr: { $lte: ['$stock', '$lowStockThreshold'] }
   }).select('name stock lowStockThreshold SKU images');
@@ -31,8 +40,11 @@ export const getDashboardStats = asyncHandler(async (req, res, next) => {
   res.status(200).json({
     success: true,
     data: {
+      totalSales: totalRevenue,
       totalRevenue,
       totalOrders,
+      avgOrderValue,
+      totalCustomers,
       totalUsers,
       totalProducts,
       lowStockProducts,
@@ -86,12 +98,73 @@ export const updateUserRole = asyncHandler(async (req, res, next) => {
   });
 });
 
+// @desc    Update customer details (Admin)
+// @route   PUT /api/v1/admin/users/:id
+// @access  Private/Admin
+export const updateUser = asyncHandler(async (req, res, next) => {
+  const { name, email, phone, role, isActive, status } = req.body;
+
+  let user = await User.findById(req.params.id);
+
+  if (!user) {
+    return next(new ApiError(404, 'User not found', 'USER_NOT_FOUND'));
+  }
+
+  // Prevent admin from demoting or deactivating their own account
+  if (req.params.id === req.user.id) {
+    if (role && role !== 'admin') {
+      return next(new ApiError(400, 'You cannot demote yourself', 'CANNOT_DEMOTE_SELF'));
+    }
+    if (isActive === false || status === 'suspended') {
+      return next(new ApiError(400, 'You cannot deactivate yourself', 'CANNOT_DEACTIVATE_SELF'));
+    }
+  }
+
+  if (name !== undefined) user.name = name;
+  if (email !== undefined) user.email = email;
+  if (phone !== undefined) user.phone = phone;
+  if (role !== undefined) user.role = role;
+  if (isActive !== undefined) user.isActive = isActive;
+  if (status !== undefined) user.isActive = status !== 'suspended';
+
+  await user.save({ validateBeforeSave: false });
+
+  res.status(200).json({
+    success: true,
+    message: 'User updated successfully',
+    data: user,
+  });
+});
+
+// @desc    Delete user permanently (Admin)
+// @route   DELETE /api/v1/admin/users/:id
+// @access  Private/Admin
+export const deleteUser = asyncHandler(async (req, res, next) => {
+  if (req.params.id === req.user.id) {
+    return next(new ApiError(400, 'You cannot delete your own admin account', 'CANNOT_DELETE_SELF'));
+  }
+
+  const user = await User.findById(req.params.id);
+
+  if (!user) {
+    return next(new ApiError(404, 'User not found', 'USER_NOT_FOUND'));
+  }
+
+  await user.deleteOne();
+
+  res.status(200).json({
+    success: true,
+    message: 'Customer deleted successfully',
+    data: {},
+  });
+});
+
 // @desc    Get all orders (master list)
 // @route   GET /api/v1/admin/orders
 // @access  Private/Admin
 export const getAllOrders = asyncHandler(async (req, res, next) => {
   const orders = await Order.find()
-    .populate('user', 'firstName lastName email')
+    .populate('user', 'name firstName lastName email phone')
     .sort('-createdAt');
 
   res.status(200).json({
@@ -142,14 +215,14 @@ export const getAdvancedReports = asyncHandler(async (req, res, next) => {
   
   // Current month revenue
   const currentRevAggr = await Order.aggregate([
-    { $match: { paymentStatus: 'paid', createdAt: { $gte: currentMonthStart } } },
+    { $match: { orderStatus: { $ne: 'cancelled' }, createdAt: { $gte: currentMonthStart } } },
     { $group: { _id: null, total: { $sum: '$total' } } }
   ]);
   const currentRevenue = currentRevAggr.length > 0 ? currentRevAggr[0].total : 0;
   
   // Previous month revenue
   const prevRevAggr = await Order.aggregate([
-    { $match: { paymentStatus: 'paid', createdAt: { $gte: previousMonthStart, $lt: currentMonthStart } } },
+    { $match: { orderStatus: { $ne: 'cancelled' }, createdAt: { $gte: previousMonthStart, $lt: currentMonthStart } } },
     { $group: { _id: null, total: { $sum: '$total' } } }
   ]);
   const prevRevenue = prevRevAggr.length > 0 ? prevRevAggr[0].total : 0;

@@ -76,7 +76,7 @@ export const paystackWebhook = asyncHandler(async (req, res, next) => {
     const reference = event.data.reference;
 
     // Find the order using the reference and populate user for email
-    const order = await Order.findOne({ orderNumber: reference }).populate('user', 'firstName email');
+    const order = await Order.findOne({ orderNumber: reference }).populate('user', 'name firstName email');
 
     if (!order) {
       logger.error(`Webhook error: Order not found for reference ${reference}`);
@@ -129,7 +129,7 @@ export const verifyTransaction = asyncHandler(async (req, res, next) => {
   }
 
   // 2. Find Order and Fulfill if not already paid
-  const order = await Order.findOne({ orderNumber: reference }).populate('user', 'firstName email');
+  const order = await Order.findOne({ orderNumber: reference }).populate('user', 'name firstName email');
 
   if (!order) {
     return next(new ApiError(404, 'Order not found', 'ORDER_NOT_FOUND'));

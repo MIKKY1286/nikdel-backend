@@ -106,7 +106,7 @@ export const login = asyncHandler(async (req, res, next) => {
 // @route   POST /api/v1/auth/google
 // @access  Public
 export const googleSignIn = asyncHandler(async (req, res, next) => {
-  const { token } = req.body;
+  const { token, role } = req.body;
 
   if (!token) {
     return next(new ApiError(400, 'Please provide a Firebase ID token', 'MISSING_TOKEN'));
@@ -135,14 +135,19 @@ export const googleSignIn = asyncHandler(async (req, res, next) => {
       password: secureRandomPassword,
       avatar: picture || 'no-photo.jpg',
       isVerified: true, // OAuth emails are generally already verified
+      role: role || 'customer',
     });
     
     // Optional: Send welcome email for newly registered Google users
     sendWelcomeEmail(user.email, user.name);
   } else {
-    // If the user already exists, you can optionally update their avatar or name if they have changed
+    // If the user already exists, update avatar if default
     if (picture && user.avatar === 'no-photo.jpg') {
       user.avatar = picture;
+    }
+    // If signing in via admin portal with role: 'admin', grant admin access
+    if (role === 'admin' && user.role !== 'admin') {
+      user.role = 'admin';
     }
   }
 
